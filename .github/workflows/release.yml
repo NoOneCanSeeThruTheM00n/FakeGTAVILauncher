@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Set release version
         shell: pwsh
@@ -92,6 +94,15 @@ jobs:
       - name: Build splash executable
         working-directory: gta-vi-splash-main-app
         run: |
+          $videos = @(
+            "src/assets/boot-screen.mov",
+            "src/assets/in-game-screen.mov"
+          )
+          foreach ($video in $videos) {
+            if (-not (Test-Path $video) -or (Get-Item $video).Length -lt 1MB) {
+              throw "Git LFS video asset is missing or incomplete: $video"
+            }
+          }
           npm ci
           npm run tauri -- build --no-bundle
 
