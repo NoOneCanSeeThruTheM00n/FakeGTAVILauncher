@@ -1,0 +1,13 @@
+[package]
+name = "fake-gta-vi-launcher"
+version = "0.1.0"
+description = "A single-game GTA VI launcher mockup"
+authors = ["NoOneCanSeeThruTheM00n"]
+license = "MIT"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }

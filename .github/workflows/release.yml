@@ -1,0 +1,153 @@
+name: Build and release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ""
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set release version
+        shell: pwsh
+        run: |
+          $refName = "${{ github.ref_name }}"
+          $version = if ($refName -match '^v(.+)$') { $matches[1] } else { "0.1.0" }
+          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+          $jsonFiles = @(
+            "package.json",
+            "gta-vi-splash-main-app/package.json",
+            "src-tauri/tauri.conf.json",
+            "gta-vi-splash-main-app/src-tauri/tauri.conf.json"
+          )
+          foreach ($file in $jsonFiles) {
+            $json = Get-Content -LiteralPath $file -Raw | ConvertFrom-Json
+            $json.version = $version
+            $json | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $file -Encoding UTF8
+          }
+
+          $cargoFiles = @(
+            "src-tauri/Cargo.toml",
+            "gta-vi-splash-main-app/src-tauri/Cargo.toml"
+          )
+          foreach ($file in $cargoFiles) {
+            $content = Get-Content -LiteralPath $file -Raw
+            $content = [regex]::Replace(
+              $content,
+              '(?m)^version\s*=.*$',
+              "version = `"$version`""
+            )
+            Set-Content -LiteralPath $file -Value $content -Encoding UTF8
+          }
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri -> target
+            gta-vi-splash-main-app/src-tauri -> target
+
+      - name: Install WebView2 build prerequisites
+        shell: pwsh
+        run: |
+          if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+            throw "Rust is not available"
+          }
+
+      - name: Build splash executable
+        working-directory: gta-vi-splash-main-app
+        run: |
+          npm ci
+          npm run tauri -- build --no-bundle
+
+      - name: Copy splash executable into launcher resources
+        shell: pwsh
+        run: |
+          $source = "gta-vi-splash-main-app/src-tauri/target/release/gta-vi-splash.exe"
+          if (-not (Test-Path $source)) {
+            throw "Splash executable was not built: $source"
+          }
+          New-Item -ItemType Directory -Force -Path "src-tauri/resources" | Out-Null
+          Copy-Item -LiteralPath $source -Destination "src-tauri/resources/gta-vi-splash.exe" -Force
+
+      - name: Install launcher dependencies
+        run: npm ci
+
+      - name: Build launcher installer
+        run: npm run tauri -- build --bundles nsis
+
+      - name: Package portable launcher
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_VERSION
+          $releaseDir = "release"
+          $portableDir = Join-Path $releaseDir "FakeGTAVILauncher-Portable"
+          New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
+
+          $launcher = "src-tauri/target/release/fake-gta-vi-launcher.exe"
+          if (-not (Test-Path $launcher)) {
+            throw "Launcher executable was not built: $launcher"
+          }
+
+          Copy-Item -LiteralPath $launcher -Destination $portableDir -Force
+          Copy-Item -LiteralPath "src-tauri/resources/gta-vi-splash.exe" -Destination $portableDir -Force
+          New-Item -ItemType Directory -Force -Path (Join-Path $portableDir "resources") | Out-Null
+          Copy-Item -LiteralPath "src-tauri/resources/gta-vi-splash.exe" -Destination (Join-Path $portableDir "resources/gta-vi-splash.exe") -Force
+
+          $portableZip = "release/FakeGTAVILauncher-$version-Portable.zip"
+          if (Test-Path $portableZip) { Remove-Item $portableZip -Force }
+          Compress-Archive -Path (Join-Path $portableDir "*") -DestinationPath $portableZip
+
+          $setup = Get-ChildItem "src-tauri/target/release/bundle/nsis" -Filter "*.exe" |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if ($null -eq $setup) {
+            throw "NSIS setup executable was not built"
+          }
+          Copy-Item -LiteralPath $setup.FullName -Destination "release/FakeGTAVILauncher-$version-Setup.exe" -Force
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FakeGTAVILauncher-${{ env.RELEASE_VERSION }}
+          path: |
+            release/*.exe
+            release/*.zip
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Fake GTA VI Launcher ${{ env.RELEASE_VERSION }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release/*.exe
+            release/*.zip

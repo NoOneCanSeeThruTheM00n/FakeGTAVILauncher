@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Frontend build output
+dist/
+.vite/
+
+# Rust / Tauri build output
+src-tauri/target/
+src-tauri/gen/
+src-tauri/resources/gta-vi-splash.exe
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and test output
+*.log
+coverage/
+test-results/
+playwright-report/
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+

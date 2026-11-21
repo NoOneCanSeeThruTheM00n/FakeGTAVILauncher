@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GTA VI Splash</title>
+  </head>
+  <body>
+    <main class="splash">
+      <img id="splash-image" alt="GTA VI splash screen" draggable="false" />
+      <div id="loading-indicator" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span class="loading-spinner" aria-hidden="true"></span>
+        <span id="loading-percentage">0%</span>
+      </div>
+      <button id="close-button" type="button" aria-label="Close window">×</button>
+      <video id="cinematic-video" class="is-hidden" preload="auto" playsinline></video>
+      <div id="black-screen" class="is-hidden" aria-hidden="true"></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

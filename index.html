@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#090909" />
+    <title>Rockstar Games Launcher — GTA VI</title>
+  </head>
+  <body>
+    <div class="launcher">
+      <aside id="game-sidebar" class="sidebar">
+        <div class="brand-mark" aria-label="Rockstar Games">
+          <img src="/src/assets/rockstar-logo.png" alt="" />
+        </div>
+
+        <section class="library">
+          <h2>My library</h2>
+          <button class="library-game is-selected" type="button" aria-current="page">
+            <span class="game-mark">
+              <img src="/src/assets/gta-vi-logo.png" alt="" />
+            </span>
+            <span class="library-game-name">Grand Theft Auto VI</span>
+          </button>
+        </section>
+
+        <div id="game-context-menu" class="game-context-menu" role="menu" hidden>
+          <button type="button" role="menuitem" data-action="uninstall">Uninstall</button>
+          <button type="button" role="menuitem" data-action="check-files">Check files</button>
+          <button type="button" role="menuitem" data-action="open-folder">Open Folder</button>
+          <button type="button" role="menuitem" data-action="open-github">Open Github</button>
+        </div>
+
+        <button
+          id="sidebar-toggle"
+          class="sidebar-toggle"
+          type="button"
+          aria-label="Collapse sidebar"
+          aria-controls="game-sidebar"
+          aria-expanded="true"
+          title="Collapse sidebar"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" />
+            <path d="M9 5v14" />
+            <path class="chevron-collapse" d="m15 9-3 3 3 3" />
+            <path class="chevron-expand" d="m12 9 3 3-3 3" />
+          </svg>
+        </button>
+      </aside>
+
+      <main class="main-content">
+        <div class="backdrop" aria-hidden="true"></div>
+        <header class="topbar">
+          <div class="window-titlebar" data-tauri-drag-region>
+            <div class="window-controls" aria-label="Window controls">
+              <button id="minimize-button" class="window-control" type="button" aria-label="Minimize window">
+                <svg viewBox="0 0 12 12" aria-hidden="true">
+                  <path d="M2 6h8" />
+                </svg>
+              </button>
+              <button id="maximize-button" class="window-control" type="button" aria-label="Maximize window">
+                <svg class="maximize-icon" viewBox="0 0 12 12" aria-hidden="true">
+                  <rect x="2.25" y="2.25" width="7.5" height="7.5" />
+                </svg>
+                <svg class="restore-icon" viewBox="0 0 12 12" aria-hidden="true">
+                  <path d="M4 2.5h5.5V8M8 4H2.5v5.5H8z" />
+                </svg>
+              </button>
+              <button id="close-button" class="window-control close-control" type="button" aria-label="Close window">
+                <svg viewBox="0 0 12 12" aria-hidden="true">
+                  <path d="m3 3 6 6m0-6L3 9" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="navigation-row">
+            <nav class="top-nav" aria-label="Main navigation">
+              <span class="nav-item is-active">Games</span>
+              <span class="nav-item">Store</span>
+              <span class="nav-item">GTA+</span>
+              <span class="nav-item">Settings</span>
+            </nav>
+            <div class="profile-avatar" aria-label="Player profile">
+              <img src="/src/assets/profile-avatar.jpg" alt="Player profile" />
+            </div>
+          </div>
+        </header>
+
+        <section class="game-page" aria-labelledby="game-title">
+          <div class="hero-copy">
+            <h1 class="game-logo" id="game-title">
+              <img src="/src/assets/gta-vi-logo.png" alt="Grand Theft Auto VI" />
+            </h1>
+            <div class="action-area">
+              <button id="install-button" class="primary-button" type="button" disabled>
+                <span id="install-label">CHECKING</span>
+              </button>
+              <button id="play-button" class="play-button" type="button" hidden>
+                PLAY
+              </button>
+              <p id="install-status" class="install-status" aria-live="polite">
+                Checking installation…
+              </p>
+              <p id="error-message" class="error-message" role="alert" hidden></p>
+            </div>
+          </div>
+
+          <article class="feature-card">
+            <img src="/src/assets/xbs_splash.png" alt="" class="feature-art" />
+          </article>
+        </section>
+
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
