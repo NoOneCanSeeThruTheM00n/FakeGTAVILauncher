@@ -29,8 +29,15 @@ jobs:
       - name: Set release version
         shell: pwsh
         run: |
-          $refName = "${{ github.ref_name }}"
-          $version = if ($refName -match '^v(.+)$') { $matches[1] } else { "0.1.0" }
+          $refName = $env:GITHUB_REF_NAME
+          if ($env:GITHUB_REF -like "refs/tags/*") {
+            if ($refName -notmatch '^v\.?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$') {
+              throw "Release tag '$refName' must use vMAJOR.MINOR.PATCH format, for example v0.1.0."
+            }
+            $version = $matches[1]
+          } else {
+            $version = "0.1.0"
+          }
           "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
           $jsonFiles = @(
