@@ -25,3 +25,19 @@ executable is approximately 574 MB.
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+## Verify release provenance
+
+Release binaries are built by the GitHub Actions workflow and include signed
+GitHub Artifact Attestations. To verify an asset downloaded from a release,
+install the [GitHub CLI](https://cli.github.com/) and run:
+
+```powershell
+gh attestation verify .\FakeGTAVILauncher-0.1.0-Setup.exe `
+  --repo NoOneCanSeeThruTheM00n/FakeGTAVILauncher
+```
+
+Replace the filename with the downloaded asset. Successful verification
+confirms the artifact digest and its GitHub Actions build provenance. It does
+not certify that the software is safe, nor is it a Windows Authenticode
+publisher signature.

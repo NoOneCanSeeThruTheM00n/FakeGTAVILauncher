@@ -2,8 +2,7 @@
 name = "gta-vi-splash"
 version = "0.1.0"
 description = "A minimal frameless GTA VI splash image window"
-authors = ["NoOneCanSeeThruTheM00n"]
-license = "MIT"
+authors = ["you"]
 edition = "2021"
 
 [build-dependencies]

@@ -1,8 +1,6 @@
 {
   "name": "gta-vi-splash",
   "private": true,
-  "author": "NoOneCanSeeThruTheM00n",
-  "license": "MIT",
   "version": "0.1.0",
   "type": "module",
   "scripts": {

@@ -11,6 +11,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   build-and-release:
@@ -131,6 +133,13 @@ jobs:
             throw "NSIS setup executable was not built"
           }
           Copy-Item -LiteralPath $setup.FullName -Destination "release/FakeGTAVILauncher-$version-Setup.exe" -Force
+
+      - name: Attest release artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            release/*.exe
+            release/*.zip
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

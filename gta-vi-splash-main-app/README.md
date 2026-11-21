@@ -15,12 +15,3 @@ npm run tauri dev
 
 The image is copied into `src/assets/xbs_splash.png`, so the app does not depend
 on the original file path after setup.
-
-## Disclaimer
-
-This project is not affiliated with, endorsed by, or connected to Rockstar Games
-or Take-Two Interactive. It is made for educational purposes only.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
