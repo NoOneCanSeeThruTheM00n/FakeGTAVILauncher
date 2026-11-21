@@ -32,6 +32,8 @@ const launcher = requireElement<HTMLDivElement>(".launcher");
 const sidebarToggle = requireElement<HTMLButtonElement>("#sidebar-toggle");
 const libraryGame = requireElement<HTMLButtonElement>(".library-game");
 const gameContextMenu = requireElement<HTMLDivElement>("#game-context-menu");
+const uninstallMenuItem = requireElement<HTMLButtonElement>('[data-action="uninstall"]');
+const checkFilesMenuItem = requireElement<HTMLButtonElement>('[data-action="check-files"]');
 const appWindow = getCurrentWindow();
 
 let state: LauncherState = "checking";
@@ -42,6 +44,12 @@ document.addEventListener("contextmenu", (event: MouseEvent) => {
 
 function closeGameContextMenu(): void {
   gameContextMenu.hidden = true;
+}
+
+function updateGameContextMenuState(): void {
+  const gameIsRunning = state === "running" || state === "launching";
+  uninstallMenuItem.disabled = gameIsRunning;
+  checkFilesMenuItem.disabled = gameIsRunning;
 }
 
 libraryGame.addEventListener("contextmenu", (event: MouseEvent) => {
@@ -55,8 +63,15 @@ libraryGame.addEventListener("contextmenu", (event: MouseEvent) => {
 
   gameContextMenu.style.left = `${Math.max(8, left)}px`;
   gameContextMenu.style.top = `${Math.max(8, top)}px`;
+  updateGameContextMenuState();
   gameContextMenu.hidden = false;
   gameContextMenu.querySelector<HTMLButtonElement>("button")?.focus();
+
+  if (state === "installed" || state === "running") {
+    void invoke<boolean>("get_game_running")
+      .then((running) => setState(running ? "running" : "installed"))
+      .catch((error: unknown) => showWindowError("Could not check the game state", error));
+  }
 });
 
 document.addEventListener("pointerdown", (event: PointerEvent) => {
@@ -74,7 +89,7 @@ document.addEventListener("keydown", (event: KeyboardEvent) => {
   }
 });
 
-gameContextMenu.addEventListener("click", (event: MouseEvent) => {
+gameContextMenu.addEventListener("click", async (event: MouseEvent) => {
   const target = event.target;
   if (!(target instanceof HTMLButtonElement)) {
     return;
@@ -82,6 +97,19 @@ gameContextMenu.addEventListener("click", (event: MouseEvent) => {
 
   const action = target.dataset.action;
   closeGameContextMenu();
+
+  if (action === "uninstall" || action === "check-files") {
+    try {
+      if (await invoke<boolean>("get_game_running")) {
+        setState("running");
+        installStatus.textContent = "Close the game before uninstalling or checking files.";
+        return;
+      }
+    } catch (error: unknown) {
+      showWindowError("Could not check the game state", error);
+      return;
+    }
+  }
 
   if (action === "uninstall") {
     void invoke("uninstall_game")
@@ -105,6 +133,7 @@ gameContextMenu.addEventListener("click", (event: MouseEvent) => {
 
 function setState(nextState: LauncherState, detail?: string): void {
   state = nextState;
+  updateGameContextMenuState();
   errorMessage.hidden = nextState !== "error";
   errorMessage.textContent = nextState === "error" ? detail ?? "Something went wrong." : "";
   installButton.hidden = nextState === "installed" || nextState === "running" || nextState === "launching";

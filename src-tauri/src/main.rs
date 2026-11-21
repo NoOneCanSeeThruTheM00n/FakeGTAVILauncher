@@ -1,16 +1,28 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::{
     fs,
     path::{Path, PathBuf},
     process::Command,
     sync::Mutex,
 };
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
 use tauri::{AppHandle, Manager, State};
 
-const GAME_EXECUTABLE: &str = "gta-vi-splash.exe";
+#[cfg(target_os = "windows")]
+const GAME_EXECUTABLE: &str = "Grand Theft Auto VI.exe";
+#[cfg(target_os = "linux")]
+const GAME_EXECUTABLE: &str = "Grand Theft Auto VI";
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+const GAME_EXECUTABLE: &str = "Grand Theft Auto VI.exe";
+
+#[cfg(target_os = "windows")]
+const DEVELOPMENT_EXECUTABLE: &str = "gta-vi-splash.exe";
+#[cfg(target_os = "linux")]
+const DEVELOPMENT_EXECUTABLE: &str = "Grand Theft Auto VI";
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+const DEVELOPMENT_EXECUTABLE: &str = "gta-vi-splash.exe";
 
 struct GameProcess(Mutex<bool>);
 
@@ -36,7 +48,7 @@ fn bundled_executable(app: &AppHandle) -> Result<PathBuf, String> {
 
     let development_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("resources")
-        .join(GAME_EXECUTABLE);
+        .join(DEVELOPMENT_EXECUTABLE);
     if development_path.is_file() {
         return Ok(development_path);
     }
@@ -71,6 +83,20 @@ fn install_game(app: AppHandle) -> Result<String, String> {
         return Err(format!(
             "Could not copy the game executable: {error}.{cleanup_message}"
         ));
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Err(error) = fs::set_permissions(&temporary, fs::Permissions::from_mode(0o755)) {
+            let cleanup_error = fs::remove_file(&temporary).err();
+            let cleanup_message = cleanup_error
+                .map(|cleanup| format!(" Could not remove the temporary file: {cleanup}."))
+                .unwrap_or_default();
+            return Err(format!(
+                "Could not make the game executable: {error}.{cleanup_message}"
+            ));
+        }
     }
 
     if destination.exists() {
@@ -116,10 +142,22 @@ fn play_game(app: AppHandle, game_process: State<'_, GameProcess>) -> Result<(),
         Ok(())
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
+    {
+        let child = Command::new(&executable)
+            .spawn()
+            .map_err(|error| format!("Could not start the game executable: {error}"))?;
+        *game_process
+            .0
+            .lock()
+            .map_err(|_| "Could not access game process state.".to_string())? = child.id() > 0;
+        Ok(())
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     {
         let _ = executable;
-        Err("The supplied game executable can only run on Windows.".to_string())
+        Err("The supplied game executable is not supported on this platform.".to_string())
     }
 }
 
@@ -133,48 +171,113 @@ fn process_is_running() -> bool {
     #[cfg(target_os = "windows")]
     command.creation_flags(CREATE_NO_WINDOW);
     let output = command
-        .args(["/FI", "IMAGENAME eq gta-vi-splash.exe", "/FO", "CSV", "/NH"])
+        .args([
+            "/FI",
+            "IMAGENAME eq Grand Theft Auto VI.exe",
+            "/FO",
+            "CSV",
+            "/NH",
+        ])
         .output();
 
     match output {
         Ok(output) => {
             let text = String::from_utf8_lossy(&output.stdout);
-            text.to_lowercase().contains("gta-vi-splash.exe")
+            text.to_lowercase().contains("grand theft auto vi.exe")
         }
         Err(_) => true,
     }
 }
 
+#[cfg(target_os = "linux")]
+fn game_process_ids(executable: &Path) -> Result<Vec<u32>, String> {
+    if !executable.is_file() {
+        return Ok(Vec::new());
+    }
+
+    let executable = fs::canonicalize(executable)
+        .map_err(|error| format!("Could not resolve the game executable: {error}"))?;
+    let processes = fs::read_dir("/proc")
+        .map_err(|error| format!("Could not inspect running processes: {error}"))?;
+    let mut process_ids = Vec::new();
+
+    for process in processes {
+        let process = process.map_err(|error| format!("Could not inspect a process: {error}"))?;
+        let process_id = match process.file_name().to_string_lossy().parse::<u32>() {
+            Ok(process_id) => process_id,
+            Err(_) => continue,
+        };
+
+        match fs::read_link(process.path().join("exe")) {
+            Ok(path) if path == executable => process_ids.push(process_id),
+            Ok(_) => {}
+            Err(_) => {
+                // Processes can exit or become inaccessible while /proc is scanned.
+            }
+        }
+    }
+
+    Ok(process_ids)
+}
+
 #[tauri::command]
-fn get_game_running(game_process: State<'_, GameProcess>) -> Result<bool, String> {
+fn get_game_running(app: AppHandle, game_process: State<'_, GameProcess>) -> Result<bool, String> {
     let _pid_guard = game_process
         .0
         .lock()
         .map_err(|_| "Could not access game process state.".to_string())?;
 
     #[cfg(target_os = "windows")]
-    return Ok(process_is_running());
+    {
+        let _ = app;
+        return Ok(process_is_running());
+    }
 
     #[cfg(not(target_os = "windows"))]
-    Ok(false)
+    {
+        #[cfg(target_os = "linux")]
+        {
+            return Ok(!game_process_ids(&install_path(&app)?)?.is_empty());
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = app;
+            Ok(false)
+        }
+    }
 }
 
 #[tauri::command]
-fn close_game(game_process: State<'_, GameProcess>) -> Result<(), String> {
+fn close_game(app: AppHandle, game_process: State<'_, GameProcess>) -> Result<(), String> {
     let mut running_guard = game_process
         .0
         .lock()
         .map_err(|_| "Could not access game process state.".to_string())?;
     #[cfg(target_os = "windows")]
     {
+        let _ = app;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         let status = Command::new("taskkill")
             .creation_flags(CREATE_NO_WINDOW)
-            .args(["/IM", "gta-vi-splash.exe", "/T", "/F"])
+            .args(["/IM", "Grand Theft Auto VI.exe", "/T", "/F"])
             .status()
             .map_err(|error| format!("Could not close the game: {error}"))?;
         if !status.success() {
             return Err("Could not close the running game process.".to_string());
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        for process_id in game_process_ids(&install_path(&app)?)? {
+            let status = Command::new("kill")
+                .args(["-TERM", &process_id.to_string()])
+                .status()
+                .map_err(|error| format!("Could not close the game: {error}"))?;
+            if !status.success() {
+                return Err(format!("Could not close game process {process_id}."));
+            }
         }
     }
 
@@ -202,7 +305,10 @@ fn check_game_files(app: AppHandle) -> Result<String, String> {
     }
 
     let source_size = source.metadata().map_err(|error| error.to_string())?.len();
-    let destination_size = destination.metadata().map_err(|error| error.to_string())?.len();
+    let destination_size = destination
+        .metadata()
+        .map_err(|error| error.to_string())?
+        .len();
     if source_size == destination_size {
         Ok("Game files are intact.".to_string())
     } else {
@@ -229,9 +335,18 @@ fn open_game_folder(app: AppHandle) -> Result<(), String> {
         Ok(())
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
     {
-        Err("Opening the game folder is only supported on Windows.".to_string())
+        Command::new("xdg-open")
+            .arg(folder)
+            .spawn()
+            .map_err(|error| format!("Could not open the game folder: {error}"))?;
+        Ok(())
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    {
+        Err("Opening the game folder is not supported on this platform.".to_string())
     }
 }
 
@@ -249,9 +364,18 @@ fn open_github() -> Result<(), String> {
         Ok(())
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
     {
-        Err("Opening GitHub is only supported on Windows.".to_string())
+        Command::new("xdg-open")
+            .arg("https://github.com/NoOneCanSeeThruTheM00n/FakeGTAVILauncher")
+            .spawn()
+            .map_err(|error| format!("Could not open GitHub: {error}"))?;
+        Ok(())
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    {
+        Err("Opening GitHub is not supported on this platform.".to_string())
     }
 }
 

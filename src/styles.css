@@ -133,6 +133,15 @@ button {
   outline: none;
 }
 
+.game-context-menu button:disabled {
+  color: #777;
+  cursor: not-allowed;
+}
+
+.game-context-menu button:disabled:hover {
+  background: transparent;
+}
+
 .game-mark {
   display: grid;
   width: 42px;

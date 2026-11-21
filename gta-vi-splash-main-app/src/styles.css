@@ -22,6 +22,11 @@ body {
   overflow: hidden;
 }
 
+.splash.is-playing-video,
+.splash.is-playing-video * {
+  cursor: none !important;
+}
+
 #splash-image {
   display: block;
   width: 100%;

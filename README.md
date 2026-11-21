@@ -18,9 +18,39 @@ npm.cmd install
 npm.cmd run tauri dev
 ```
 
-Choose **Install** to copy the bundled `gta-vi-splash.exe` into the launcher's
+Choose **Install** to copy the bundled `Grand Theft Auto VI.exe` into the launcher's
 application data directory. **Play** starts that executable. The bundled
 executable is approximately 574 MB.
+
+## Run on Linux
+
+Install Node.js, Rust, the WebKitGTK development libraries, and GStreamer H.264
+codecs. On Ubuntu/Debian:
+
+```bash
+sudo apt install build-essential libwebkit2gtk-4.1-dev libssl-dev \
+  libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf \
+  gstreamer1.0-libav gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
+  gstreamer1.0-plugins-ugly
+```
+
+Build and stage the native splash executable, then run the launcher:
+
+```bash
+cd gta-vi-splash-main-app
+npm ci
+npm run tauri -- build --no-bundle
+cd ..
+mkdir -p src-tauri/resources
+install -m 755 "gta-vi-splash-main-app/src-tauri/target/release/gta-vi-splash" \
+  "src-tauri/resources/Grand Theft Auto VI"
+npm ci
+npm run tauri dev
+```
+
+Linux releases include an AppImage, a Debian package, and a portable ZIP.
+The AppImage may require `libfuse2` from your distribution to run. H.264
+playback requires compatible GStreamer codecs.
 
 ## License
 

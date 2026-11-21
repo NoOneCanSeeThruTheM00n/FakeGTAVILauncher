@@ -20,6 +20,7 @@ const loadingIndicator = requireElement<HTMLDivElement>("#loading-indicator");
 const loadingPercentage = requireElement<HTMLSpanElement>("#loading-percentage");
 const cinematicVideo = requireElement<HTMLVideoElement>("#cinematic-video");
 const blackScreen = requireElement<HTMLDivElement>("#black-screen");
+const splash = requireElement<HTMLElement>(".splash");
 
 splashImage.src = splashImageUrl;
 splashImage.addEventListener("pointerdown", (event) => {
@@ -96,12 +97,14 @@ function simulateLoading(): Promise<void> {
 }
 
 function playVideo(source: string, label: string): Promise<void> {
+  splash.classList.add("is-playing-video");
   cinematicVideo.src = source;
   cinematicVideo.classList.remove("is-hidden");
   cinematicVideo.load();
 
   return new Promise((resolve, reject) => {
     const cleanup = () => {
+      splash.classList.remove("is-playing-video");
       cinematicVideo.removeEventListener("ended", onEnded);
       cinematicVideo.removeEventListener("error", onError);
     };

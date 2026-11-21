@@ -9,6 +9,7 @@ dist/
 src-tauri/target/
 src-tauri/gen/
 src-tauri/resources/gta-vi-splash.exe
+src-tauri/resources/Grand Theft Auto VI
 
 # Local environment and secrets
 .env
@@ -20,6 +21,7 @@ src-tauri/resources/gta-vi-splash.exe
 coverage/
 test-results/
 playwright-report/
+release/
 
 # Editor and operating-system files
 .vscode/

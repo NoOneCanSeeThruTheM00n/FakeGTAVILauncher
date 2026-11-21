@@ -30,9 +30,6 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "publisher": "NoOneCanSeeThruTheM00n",
-    "resources": {
-      "resources/gta-vi-splash.exe": "gta-vi-splash.exe"
-    }
+    "publisher": "NoOneCanSeeThruTheM00n"
   }
 }
